@@ -41,6 +41,12 @@ async def get_user(user_id: str):
 async def create_item(item: Item):
     """Create an item."""
     item_dict = item.dict()
-    price_with_tax = item.price + item.tax
+    price_with_tax = item.price + item.tax if item.tax else item.price
     item_dict.update({"price after tax": price_with_tax})
     return item_dict
+
+
+@app.put("/items/{item_id}")
+async def create_item_by_Id(item_id: str, item: Item):
+    """Create an item by id and Item."""
+    return {"item_id": item_id, **item.dict()}
