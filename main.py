@@ -1,22 +1,43 @@
 # main.py
+import time
 from typing import Optional
 
 from fastapi import FastAPI
 from pydantic import BaseModel
-
-
-class Item(BaseModel):
-    name: str
-    description: Optional[str] = None
-    price: float
-    tax: Optional[float] = 0.0
-
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
 app = FastAPI()
 
 
+class Post(BaseModel):
+    id: int
+    title: str
+    content: str
+    published: bool = True
+
+
+while True:
+    try:
+        conn = psycopg2.connect(
+            host="localhost",
+            port=5433,
+            database="postgres",
+            user="postgres",
+            password="2298367600",
+            cursor_factory=RealDictCursor,
+        )
+        cur = conn.cursor()
+        print("connection successful")
+        break
+    except psycopg2.Error as e:
+        time.sleep(2)
+        print("connection failed...")
+        print(e)
+
+
 @app.get("/")
-async def welcome_func():
+async def root():
     return {"message": "hello there!!"}
 
 
@@ -31,22 +52,20 @@ async def read_user_me():
     return {"user_id": "current user Id"}
 
 
-@app.get("/user/{user_id}")
-async def get_user(user_id: str):
+@app.get("/user/{post_id}")
+async def get_user(post_id: int):
     """Get Id of user."""
-    return {"user": f"this is {user_id}"}
+    return {"post": f"this is {post_id}"}
 
 
 @app.post("/items/")
-async def create_item(item: Item):
+async def create_item(post: Post):
     """Create an item."""
-    item_dict = item.dict()
-    price_with_tax = item.price + item.tax if item.tax else item.price
-    item_dict.update({"price after tax": price_with_tax})
-    return item_dict
+    post_dict = post.dict()
+    return post_dict
 
 
 @app.put("/items/{item_id}")
-async def create_item_by_Id(item_id: str, item: Item):
+async def create_item_by_Id(post_id: int, post: Post):
     """Create an item by id and Item."""
-    return {"item_id": item_id, **item.dict()}
+    return {"item_id": post_id, **post.dict()}
