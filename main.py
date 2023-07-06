@@ -1,8 +1,8 @@
 # main.py
 import time
-from typing import Optional
+import random
 
-from fastapi import FastAPI
+from fastapi import FastAPI, status, HTTPException, Response
 from pydantic import BaseModel
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -11,10 +11,10 @@ app = FastAPI()
 
 
 class Post(BaseModel):
-    id: int
+    id: int = None
     title: str
     content: str
-    published: bool = True
+    publish: bool = True
 
 
 while True:
@@ -41,7 +41,7 @@ async def root():
     return {"message": "hello there!!"}
 
 
-@app.get("/posts")
+@app.get("/posts/")
 def get_posts():
     cursor.execute(""" SELECT * FROM posts""")
     posts = cursor.fetchall()
@@ -49,6 +49,52 @@ def get_posts():
 
 
 # insert a post in DB
-@app.post("/posts")
-def create_post():
-    pass
+@app.post("/posts/", status_code=status.HTTP_201_CREATED)
+def create_post(post: Post):
+    cursor.execute(
+        """INSERT INTO posts (title, content) VALUES (%s, %s)
+           RETURNING *;
+        """,
+        (post.title, post.content),
+    )
+    new_post = cursor.fetchone()
+    conn.commit()
+    return new_post
+
+
+@app.get("/posts/{id}")
+def get_post(id: int):
+    cursor.execute("""SELECT * FROM posts WHERE id = %s;""", (id,))
+    post = cursor.fetchone()
+    if not post:
+        raise HTTPException(
+            status_code=status.HTTP_204_NO_CONTENT,
+            detail=f"post with id {id} not found",
+        )
+    return post
+
+
+@app.delete("/posts/{id}")
+def delete_posts(id: int):
+    cursor.execute("""DELETE FROM posts WHERE id = %s RETURNING *;""", (id,))
+    deleted_post = cursor.fetchone()
+    if not deleted_post:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="couldn't delete post with id {id}.",
+        )
+    conn.commit()
+    return {"deleted": deleted_post}
+
+
+@app.put("/posts/{id}")
+def update_post(id: int, post: Post):
+    cursor.execute(
+        """UPDATE  posts SET title = %s, content = %s, publish = %s 
+           WHERE id = %s RETURNING *;
+        """,
+        (post.title, post.content, post.publish, id),
+    )
+    updated_post = cursor.fetchone()
+    conn.commit()
+    return updated_post
