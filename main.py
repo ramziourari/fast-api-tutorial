@@ -27,7 +27,7 @@ while True:
             password="2298367600",
             cursor_factory=RealDictCursor,
         )
-        cur = conn.cursor()
+        cursor = conn.cursor()
         print("connection successful")
         break
     except psycopg2.Error as e:
@@ -41,31 +41,14 @@ async def root():
     return {"message": "hello there!!"}
 
 
-@app.post("/items/{item_id}")
-async def read_item(item_id):
-    return {"item_id": item_id + "haha"}
+@app.get("/posts")
+def get_posts():
+    cursor.execute(""" SELECT * FROM posts""")
+    posts = cursor.fetchall()
+    return posts
 
 
-@app.get("/user/me")
-async def read_user_me():
-    """Get current user info."""
-    return {"user_id": "current user Id"}
-
-
-@app.get("/user/{post_id}")
-async def get_user(post_id: int):
-    """Get Id of user."""
-    return {"post": f"this is {post_id}"}
-
-
-@app.post("/items/")
-async def create_item(post: Post):
-    """Create an item."""
-    post_dict = post.dict()
-    return post_dict
-
-
-@app.put("/items/{item_id}")
-async def create_item_by_Id(post_id: int, post: Post):
-    """Create an item by id and Item."""
-    return {"item_id": post_id, **post.dict()}
+# insert a post in DB
+@app.post("/posts")
+def create_post():
+    pass
