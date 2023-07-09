@@ -2,7 +2,7 @@
 import time
 
 from fastapi import FastAPI, status, HTTPException, Depends
-from pydantic import BaseModel
+import schemas
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
@@ -14,13 +14,6 @@ from sqlalchemy import exc
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
-
-
-class Post(BaseModel):
-    id: int = None
-    title: str
-    content: str
-    published: bool = True
 
 
 while True:
@@ -55,7 +48,7 @@ def get_posts(db: Session = Depends(get_db)):
 
 # insert a post in DB
 @app.post("/posts/", status_code=status.HTTP_201_CREATED)
-def create_post(post: Post, db: Session = Depends(get_db)):
+def create_post(post: schemas.PostCreate, db: Session = Depends(get_db)):
     new_post = models.Post(**post.dict())
     db.add(new_post)
     db.commit()
@@ -76,26 +69,30 @@ def get_post(id: int, db: Session = Depends(get_db)):
 
 
 @app.delete("/posts/{id}")
-def delete_posts(id: int):
-    cursor.execute("""DELETE FROM posts WHERE id = %s RETURNING *;""", (id,))
-    deleted_post = cursor.fetchone()
-    if not deleted_post:
+def delete_posts(id: int, db: Session = Depends(get_db)):
+    post = db.query(models.Post).filter(models.Post.id == id)
+    if not post.first():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="couldn't delete post with id {id}.",
+            detail=f"couldn't delete post with id {id}.",
         )
-    conn.commit()
-    return {"deleted": deleted_post}
+    post.delete(synchronize_session=False)
+    db.commit()
+    return status.HTTP_204_NO_CONTENT
 
 
 @app.put("/posts/{id}")
-def update_post(id: int, post: Post):
-    cursor.execute(
-        """UPDATE  posts SET title = %s, content = %s, publish = %s
-           WHERE id = %s RETURNING *;
-        """,
-        (post.title, post.content, post.publish, id),
-    )
-    updated_post = cursor.fetchone()
-    conn.commit()
-    return updated_post
+def update_post(
+    id: int, updated_post: schemas.PostUpdate, db: Session = Depends(get_db)
+):
+    post_query = db.query(models.Post).filter(models.Post.id == id)
+    post = post_query.first()
+
+    if not post:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"couldn't delete post with id {id}.",
+        )
+    post_query.update(updated_post.dict(), synchronize_session=False)
+    db.commit()
+    return {"data": post_query.first()}
