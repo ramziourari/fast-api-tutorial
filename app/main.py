@@ -5,6 +5,7 @@ from fastapi import FastAPI, status, HTTPException, Depends
 import schemas
 import psycopg2
 from psycopg2.extras import RealDictCursor
+from psycopg2 import errors
 
 import models
 from database import engine, get_db
@@ -107,8 +108,41 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     hashed_password = utils.hash_pwd(user.password)
     user.password = hashed_password
     new_user = models.User(**user.dict())
+    try:
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+        return new_user
+    except exc.IntegrityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_406_NOT_ACCEPTABLE,
+            detail="Unique violation entry, email already used",
+        )
 
-    db.add(new_user)
+
+@app.get("/users/{id}", response_model=schemas.UserResponse)
+def get_user(id: int, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.id == id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"user {id} not found"
+        )
+    return user
+
+
+@app.get("/users/", response_model=List[schemas.UserResponse])
+def get_users(db: Session = Depends(get_db)):
+    users = db.query(models.User).all()
+    if not users:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="no users found"
+        )
+    return users
+
+
+@app.delete("/users/{id}")
+def delete_user(id: int, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.id == id)
+    user.delete(synchronize_session=False)
     db.commit()
-    db.refresh(new_user)
-    return new_user
+    return status.HTTP_204_NO_CONTENT

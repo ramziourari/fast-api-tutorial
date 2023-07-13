@@ -32,7 +32,6 @@ class UserCreate(UserBase):
 
 class UserResponse(BaseModel):
     email: EmailStr
-    created_at: datetime
 
     class Config:
         orm_mode = True
