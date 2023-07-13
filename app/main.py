@@ -1,6 +1,6 @@
 # main.py
 import time
-
+from typing import List
 from fastapi import FastAPI, status, HTTPException, Depends
 import schemas
 import psycopg2
@@ -10,6 +10,7 @@ import models
 from database import engine, get_db
 from sqlalchemy.orm import Session
 from sqlalchemy import exc
+import utils
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -40,14 +41,15 @@ async def root():
     return {"message": "hello there!!"}
 
 
-@app.get("/posts/")
+@app.get("/posts/", response_model=List[schemas.PostResponse])
 def get_posts(db: Session = Depends(get_db)):
     posts = db.query(models.Post).all()
-    return {"data": posts}
+    return posts
 
 
-# insert a post in DB
-@app.post("/posts/", status_code=status.HTTP_201_CREATED)
+@app.post(
+    "/posts/", status_code=status.HTTP_201_CREATED, response_model=schemas.PostResponse
+)
 def create_post(post: schemas.PostCreate, db: Session = Depends(get_db)):
     new_post = models.Post(**post.dict())
     db.add(new_post)
@@ -56,7 +58,7 @@ def create_post(post: schemas.PostCreate, db: Session = Depends(get_db)):
     return new_post
 
 
-@app.get("/posts/{id}")
+@app.get("/posts/{id}", response_model=schemas.PostResponse)
 def get_post(id: int, db: Session = Depends(get_db)):
     try:
         query = db.query(models.Post).filter(models.Post.id == id)
@@ -65,7 +67,7 @@ def get_post(id: int, db: Session = Depends(get_db)):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=f"post id {id} not found!!"
         )
-    return {"data": posts}
+    return posts
 
 
 @app.delete("/posts/{id}")
@@ -81,7 +83,7 @@ def delete_posts(id: int, db: Session = Depends(get_db)):
     return status.HTTP_204_NO_CONTENT
 
 
-@app.put("/posts/{id}")
+@app.put("/posts/{id}", response_model=schemas.PostResponse)
 def update_post(
     id: int, updated_post: schemas.PostUpdate, db: Session = Depends(get_db)
 ):
@@ -95,4 +97,18 @@ def update_post(
         )
     post_query.update(updated_post.dict(), synchronize_session=False)
     db.commit()
-    return {"data": post_query.first()}
+    return post_query.first()
+
+
+@app.post(
+    "/users/", status_code=status.HTTP_201_CREATED, response_model=schemas.UserResponse
+)
+def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    hashed_password = utils.hash_pwd(user.password)
+    user.password = hashed_password
+    new_user = models.User(**user.dict())
+
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return new_user
