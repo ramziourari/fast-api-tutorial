@@ -1,4 +1,4 @@
-import models, schemas
+import app.models, schemas
 from sqlalchemy import exc
 from fastapi import status, Depends, HTTPException, APIRouter
 from typing import Optional
