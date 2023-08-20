@@ -4,10 +4,10 @@ from sqlalchemy import exc
 from sqlalchemy.orm import Session
 from fastapi import status, Depends, HTTPException, APIRouter
 
-import models, schemas
-from database import get_db
-import utils
-import oauth2
+from app import models, schemas
+from app.database import get_db
+from app import utils
+from app import oauth2
 
 router = APIRouter(prefix="/users", tags=["users"])
 

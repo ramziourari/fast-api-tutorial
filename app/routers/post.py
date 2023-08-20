@@ -5,7 +5,7 @@ from typing import Optional
 from app.database import get_db
 from sqlalchemy.orm import Session
 from typing import List
-import oauth2
+import app.oauth2 as oauth2
 from sqlalchemy import func
 
 router = APIRouter(prefix="/posts", tags=["Posts"])

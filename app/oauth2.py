@@ -2,11 +2,11 @@ from jose import jwt, JWTError
 from fastapi import Depends, status, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from datetime import datetime, timedelta
-import schemas
+from app import schemas
 from sqlalchemy.orm import Session
-from database import get_db
-import models
-from config import settings
+from app.database import get_db
+from app import models
+from app.config import settings
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
