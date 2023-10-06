@@ -1,0 +1,129 @@
+questions for fast api with postgres backend:
+
+Q: what is ORM?
+A: object relation mapper. It basically maps objects 
+    in python (i.e. classes) to tables (i.e. relation) 
+    in a database. Thats what sqlalchemy enabels us to do.
+
+Q: how to hash a user password and why you do it?
+A: we do it so that even if the db access was hacked no one can read
+    the password (you can't reverse engineer the hash)
+    you can use passlib library from python to hash the string
+    password before inserting it into the database
+
+Q: how to define what the response should look like?
+A: in the path operation decorator set the parameter 'response_model'
+    to a class that inherits from BaseModel (pydantic). This class 
+    should define which attributes you want to give back in the
+    response. Note: Make sure the class you pass to 'response_model'
+    has a private class called config with the attribute
+    orm_mode = True
+
+Q: how to create schemas using sqlalchemy?
+A: 
+    1) create a database.py file to configure the database connection
+        - define the SQLALCHEMY_DATABASE_URL for postgres the url reads as
+        "postgresql://user:password@postgresserver/db"
+        - create an engine using the url
+        - create a session using sessionmaker
+        - create a Base class using declarative_base()
+        - define a get_db() def that yields an instance of the session
+
+    2) we can define a models.py where for each table we define a class
+        in these steps:
+            - define class e.g. Post(Base), import Base from database
+                database.py is where we configure the database connection
+                see step 1)
+            - define __tablename__ = <your-table-name>
+            - define attributes e.g.:
+                id = Column(Integer, primary_key=True, nullable=False)
+                ...
+    3) in your entry file add this line to create non-existing tables
+            models.Base.metadata.create_all(bind=engine)
+
+Q: what is router in FastAPI and how can you implement it?
+A: is a way to seperate different collections of path operations
+    into different files. 
+    each file will create an instance of 'APIRouter' from fastapi 
+    and its path operations will be decorated by @router 
+    (instead of @app). Later in the main file we will include 
+    these routers using, app.include_router(foo.router), 
+    where foo is a file collecting path operations for 
+    a specific theme (e.g. Posts, Users ...)
+    you can use tags when creating an instance of APIRouter
+    so that the doc creates a seperate section for that collection.
+
+Q: What is JWT Token Authentication and how does it work?
+A: Jason web token, is a way of keeping a user logged in via
+    a token that can have a variable expiry time.
+    to generate a token some input is required, one of these
+    is a secret which will determine whether a user's token 
+    matches for example with its login data (like role and permissions)
+
+Q: what is one to many relationship?
+A: one user can create many posts. a post can only be created by 
+    one user
+
+Q: what is a query paramaeter? how to set it?
+A: a query parameter is a parameter that can be used with a query.
+    you put your parameters after "?" at the endpoint url. e.g.: 
+    'posts = db.query(models.Post).limit(limit).all()'
+    you can use many query parameters with the "&" operator.
+
+Q: what can you use env variables for?
+A: instead of hardcoding variables like url or password which will differ from
+    user to  user we can use env variables so we seperate logic from parameters
+    like url, dev/prod, different OS, password etc.
+
+Q: how to make sure that a combination of n columns is unique?
+A: use composite keys --> it's like primary key but spans over multiple columns
+
+Q: what is alembic used for?
+A: it allows for incremental database extensions (i.e. adding removing of columns)
+    it gives devs something like git to migrate schemas from for example two columns 
+    A, B to three columns A, B, C. this is because sqlalchemy alone an not do this
+    because sqlalchemy first checks if a table exists or not and only creates tables 
+    if they do not exist otherwise it skips.
+
+Q what is a Procfile used for?
+A: a Procfile tells heroku which command to run to start your app. It must be located 
+    in the root of the project and is a text file (without .txt extension). It has the format 
+    <process type>: <command> e.g. "web: uvicorn app.main:app --host=0.0.0.0 --port=${PORT:-5000}"
+    web is the process and after the :, the command to be run is given.
+Q: how to push changes in your project to heroku?
+A: you commit your local changes and then run:
+    git push heroku main this will push changes from main to a remote "heroku"    
+
+Q: what is .profile used for?
+A: can be used to persist env variables after reboot
+
+Q: how to create env variabes in linux?
+A: export MY_VAR=MY_VAL
+
+Q: what are the steps needed to deploy to heroku?
+A:  * get a git repository
+    * install heroku cli and loginStarting pgAdmin 4...
+    * create an app for the project: heroku create <name of app>
+    * push to heroku remote: git push heroku main
+    * heroku open to lunch the app
+
+Q: how to set up which commands should be run on reboot on a ubuntu server?
+A: you can save the command in a .profile
+
+Q: how to create a new user oon a ubuntu serve?
+A: adduser <user-name>
+
+Q: how to give root access to user?
+A: usermod -aG sudo <user-name>  
+
+Q: how to create your service?
+A: create a service file under /etc/systemd/system called <service-name>
+    and put your configuration in that file. for an exmple see 
+    gunicorn.service file. then you can start your service
+    like this systemctl start <your-service-name>. To start your service
+    on reboot you can do:
+    sudo systemctl enable <your-service-name>
+
+Q: what's nginx?
+A: it's a webserver. high performance server that can handle https it is
+    optimized for https (ssl termination)
